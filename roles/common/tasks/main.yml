@@ -1,0 +1,90 @@
+---
+- name: Install base system packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Set system timezone
+  community.general.timezone:
+    name: "{{ cluster_timezone }}"
+
+- name: Allow SSH traffic in UFW
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    comment: "SSH"
+
+- name: Allow public service ports in UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    comment: "Public service port {{ item }}"
+  loop: "{{ common_ufw_public_ports }}"
+
+- name: Allow Docker Swarm management port on managers
+  community.general.ufw:
+    rule: allow
+    port: "2377"
+    proto: tcp
+    from_ip: "{{ cluster_subnet }}"
+    comment: "Docker Swarm manager API"
+  when: "'managers' in group_names"
+
+- name: Allow Docker Swarm cluster communication ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    from_ip: "{{ cluster_subnet }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ common_ufw_swarm_ports }}"
+
+- name: Allow Redis and Sentinel ports for cluster and Docker bridges
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: tcp
+    from_ip: "{{ item.from }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ common_ufw_redis_rules }}"
+
+- name: Allow VRRP multicast traffic for Keepalived on managers
+  community.general.ufw:
+    rule: allow
+    from_ip: "{{ cluster_subnet }}"
+    to_ip: "224.0.0.18"
+    comment: "Keepalived VRRP multicast"
+  when: "'managers' in group_names"
+
+- name: Enable UFW with deafult deny incoming policy
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  
+- name: Install Keepalived on managers
+  ansible.builtin.apt:
+    name: keepalived
+    state: present
+  when: "'managers' in group_names"
+
+- name: Deploy Keepalived configuration on managers
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart keepalived
+  when: "'managers' in group_names"
+
+- name: Ensure Keepalived service is started and enabled on managers
+  ansible.builtin.systemd:
+    name: keepalived
+    state: started
+    enabled: true
+  when: "'managers' in group_names"

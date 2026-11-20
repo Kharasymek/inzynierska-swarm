@@ -1,0 +1,5 @@
+---
+- name: Configure base system, firewall and Keepalived VIP
+  hosts: swarm_cluster
+  roles:
+    - common

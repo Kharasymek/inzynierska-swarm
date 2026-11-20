@@ -1,0 +1,30 @@
+global_defs {
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_docker {
+    script "/usr/bin/pgrep dockerd"
+    interval 2
+    fall 2
+    rise 2
+    weight -20
+}
+
+vrrp_instance VI_1 {
+    state {{ keepalived_nodes[inventory_hostname].state }}
+    interface {{ cluster_network_interface }}
+    virtual_router_id {{ keepalived_virtual_router_id }}
+    priority {{ keepalived_nodes[inventory_hostname].priority }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass }}
+    }
+    virtual_ipaddress {
+        {{ cluster_vip_cidr }}
+}
+    track_script {
+        chk_docker
+    }
+}
