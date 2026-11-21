@@ -1,0 +1,35 @@
+---
+- name: Initialize Docker Swarm on primary Manager
+  community.docker.docker_swarm:
+    state: present
+    advertise_addr: "{{ ansible_host }}"
+  when: inventory_hostname == groups['managers'][0]
+  register: swarm_init
+
+- name: Join remaining manager nodes to Docker Swarm
+  community.docker.docker_swarm:
+    state: join
+    advertise_addr: "{{ ansible_host }}"
+    join_token: "{{ hostvars[groups['managers'][0]]['swarm_init']['swarm_facts']['JoinTokens']['Manager'] }}"
+    remote_addrs:
+      - "{{ hostvars[groups['managers'][0]]['ansible_host'] }}:{{ swarm_advertise_port }}"
+  when:
+    - inventory_hostname in groups['managers']
+    - inventory_hostname != groups['managers'][0]
+
+- name: Join worker nodes to Docker Swarm
+  community.docker.docker_swarm:
+    state: join
+    advertise_addr: "{{ ansible_host }}"
+    join_token: "{{ hostvars[groups['managers'][0]]['swarm_init']['swarm_facts']['JoinTokens']['Worker'] }}"
+    remote_addrs:
+      - "{{ hostvars[groups['managers'][0]]['ansible_host'] }}:{{ swarm_advertise_port }}"
+  when: inventory_hostname in groups['workers']
+
+- name: Apply declarative node labels to Swarm cluster
+  community.docker.docker_node:
+    hostname: "{{ item.key }}"
+    labels: "{{ item.value }}"
+    labels_state: replace
+  loop: "{{ swarm_node_labels | dict2items }}"
+  when: inventory_hostname == groups['managers'][0]

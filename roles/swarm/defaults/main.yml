@@ -1,0 +1,21 @@
+---
+swarm_advertise_port: 2377
+
+swarm_node_labels:
+  ideis54152-manager1:
+    tier: management
+    monitoring: primary
+    sentinel_node: "1"
+  ideis54152-manager2:
+    tier: management
+    monitoring: secondary
+    sentinel_node: "2"
+  ideis54152-manager3:
+    tier: management
+    sentinel_node: "3"
+  ideis54152-worker1:
+    tier: workload
+    redis_node: "1"
+  ideis54152-worker2:
+    tier: workload
+    redis_node: "2"
