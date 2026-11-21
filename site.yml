@@ -3,3 +3,4 @@
   hosts: swarm_cluster
   roles:
     - common
+    - docker
