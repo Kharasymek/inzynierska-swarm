@@ -13,6 +13,7 @@
     owner: root
     group: root
     mode: "0644"
+    validate: "python3 -m json.tool %s"
   notify: Restart docker
 
 - name: Ensure docker service is enabled and running
