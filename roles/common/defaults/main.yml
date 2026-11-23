@@ -12,6 +12,7 @@ common_ufw_public_ports:
 - "3000"
 - "8025"
 - "9090"
+- "9091"
 - "9093"
 
 common_ufw_swarm_ports:
