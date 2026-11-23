@@ -1,0 +1,50 @@
+---
+- name: Ensure monitoring directory structure exists on managers
+  ansible.builtin.file:
+    path: "{{ monitoring_base_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - prometheus
+    - alertmanager
+    - grafana/provisioning/datasources
+    - grafana/provisioning/dashboards/json
+  when: inventory_hostname in groups['managers']
+
+- name: Render monitoring configuration files on managers
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ monitoring_base_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: "prometheus.yml.j2", dest: "prometheus/prometheus.yml" }
+    - { src: "alerts.yml.j2", dest: "prometheus/alerts.yml" }
+    - { src: "alertmanager.yml.j2", dest: "alertmanager/alertmanager.yml" }
+    - { src: "grafana-datasources.yml.j2", dest: "grafana/provisioning/datasources/datasources.yml" }
+    - { src: "grafana-dashboards.yml.j2", dest: "grafana/provisioning/dashboards/dashboards.yml" }
+    - { src: "docker-stack.yml.j2", dest: "docker-stack.yml" }
+  when: inventory_hostname in groups['managers']
+
+- name: Copy provisioned Grafana dashboards to managers
+  ansible.builtin.copy:
+    src: "dashboards/"
+    dest: "{{ monitoring_base_dir }}/grafana/provisioning/dashboards/json/"
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
+  when: inventory_hostname in groups['managers']
+
+- name: Deploy monitoring stack to Docker Swarm
+  community.docker.docker_stack:
+    name: "{{ monitoring_stack_name }}"
+    state: present
+    prune: true
+    resolve_image: never
+    compose:
+      - "{{ monitoring_base_dir }}/docker-stack.yml"
+  when: inventory_hostname in groups['managers'][0]

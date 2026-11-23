@@ -1,0 +1,67 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "ideis54152-swarm"
+
+rule_files:
+  - "/etc/prometheus/alerts.yml"
+
+alerting:
+  alertmanagers:
+    - dns_sd_configs:
+        - names:
+            - "tasks.{{ monitoring_stack_name }}_alertmanager"
+          type: "A"
+          port: 9093
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "node-exporter"
+    dockerswarm_sd_configs:
+      - host: unix:///var/run/docker.sock
+        role: tasks
+    relabel_configs:
+      - source_labels: [__meta_dockerswarm_service_label_prometheus_job]
+        regex: node-exporter
+        action: keep
+      - source_labels: [__meta_dockerswarm_network_name]
+        regex: "{{ monitoring_stack_name }}_monitoring_net"
+        action: keep
+      - source_labels: [__meta_dockerswarm_task_desired_state]
+        regex: running
+        action: keep
+      - source_labels: [__address__, __meta_dockerswarm_service_label_prometheus_port]
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_dockerswarm_node_hostname]
+        target_label: instance
+      - source_labels: [__meta_dockerswarm_node_hostname]
+        target_label: nodename
+
+  - job_name: "cadvisor"
+    dockerswarm_sd_configs:
+      - host: unix:///var/run/docker.sock
+        role: tasks
+    relabel_configs:
+      - source_labels: [__meta_dockerswarm_service_label_prometheus_job]
+        regex: cadvisor
+        action: keep
+      - source_labels: [__meta_dockerswarm_network_name]
+        regex: "{{ monitoring_stack_name }}_monitoring_net"
+        action: keep
+      - source_labels: [__meta_dockerswarm_task_desired_state]
+        regex: running
+        action: keep
+      - source_labels: [__address__, __meta_dockerswarm_service_label_prometheus_port]
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_dockerswarm_node_hostname]
+        target_label: instance
+      - source_labels: [__meta_dockerswarm_node_hostname]
+        target_label: nodename

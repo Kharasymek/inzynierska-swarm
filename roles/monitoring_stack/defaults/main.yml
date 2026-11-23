@@ -1,0 +1,18 @@
+---
+monitoring_stack_name: "monitoring"
+monitoring_base_dir: "/opt/swarm/monitoring"
+monitoring_network_subnet: "10.10.0.0/24"
+monitoring_expected_nodes: 5
+
+prometheus_image: "prom/prometheus:v2.55.1"
+alertmanager_image: "prom/alertmanager:v0.27.0"
+node_exporter_image: "prom/node-exporter:v1.8.2"
+cadvisor_image: "ghcr.io/google/cadvisor:v0.61.1"
+grafana_image: "grafana/grafana:11.3.0"
+mailpit_image: "axllent/mailpit:v1.21"
+
+grafana_admin_user: "admin"
+grafana_admin_password: "admin_ideis54152"
+
+alertmanager_email_to: "admin@ideis54152.local"
+alertmanager_email_from: "alermanager@ideis54152.local"

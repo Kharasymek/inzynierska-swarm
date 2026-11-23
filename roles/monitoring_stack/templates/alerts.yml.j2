@@ -1,0 +1,47 @@
+groups:
+  - name: swarm_cluster_alerts
+    rules:
+      - alert: SwarmClusterNodesDegraded
+        expr: count(up{job="node-exporter"} == 1) < {{ monitoring_expected_nodes }}
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Spadek liczby aktywnych węzłów w klastrze Docker Swarm"
+          description: '{% raw %}Aktywnych węzłów Node Exporter: {{ $value }} (oczekiwano {% endraw %}{{ monitoring_expected_nodes }}{% raw %}). Jeden lub więcej węzłów przestał odpowiadać.{% endraw %}'
+
+      - alert: InstanceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: '{% raw %}Cel monitoringu niedostępny: {{ $labels.job }} ({{ $labels.instance }}){% endraw %}'
+          description: '{% raw %}Usługa {{ $labels.job }} na węźle {{ $labels.instance }} nie odpowiada od ponad 30 sekund.{% endraw %}'
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{% raw %}Wysokie użycie pamięci RAM na {{ $labels.instance }}{% endraw %}'
+          description: '{% raw %}Węzeł {{ $labels.instance }} przekroczył 85% użycia RAM (aktualnie: {{ printf "%.1f" $value }}%).{% endraw %}'
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 85
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{% raw %}Wysokie obciążenie CPU na {{ $labels.instance }}{% endraw %}'
+          description: '{% raw %}Węzeł {{ $labels.instance }} przekroczył 85% obciążenia CPU (aktualnie: {{ printf "%.1f" $value }}%).{% endraw %}'
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"})) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{% raw %}Mało wolnego miejsca na dysku na {{ $labels.instance }}{% endraw %}'
+          description: '{% raw %}Partycja / na węźle {{ $labels.instance }} jest zajęta w {{ printf "%.1f" $value }}%.{% endraw %}'

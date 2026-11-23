@@ -5,3 +5,4 @@
     - common
     - docker
     - swarm
+    - monitoring_stack
