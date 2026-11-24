@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+if [ ! -f /data/sentinel.conf ]; then
+  cp /etc/redis/sentinel-base.conf /data/sentinel.conf
+  echo "sentinel announce-ip ${ANNOUNCE_IP}" >> /data/sentinel.conf
+fi
+
+exec redis-sentinel /data/sentinel.conf

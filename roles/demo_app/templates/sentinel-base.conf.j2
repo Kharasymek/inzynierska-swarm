@@ -1,0 +1,8 @@
+port {{ demo_sentinel_port }}
+bind 0.0.0.0
+protected-mode no
+dir /data
+sentinel monitor {{ demo_redis_master_name }} {{ demo_redis_default_master_ip }} {{ demo_redis_port }} {{ demo_redis_quorum }}
+sentinel down-after-milliseconds {{ demo_redis_master_name }} {{ demo_redis_down_after_ms }}
+sentinel failover-timeout {{ demo_redis_master_name }} {{ demo_redis_failover_timeout }}
+sentinel parallel-syncs {{ demo_redis_master_name }} 1

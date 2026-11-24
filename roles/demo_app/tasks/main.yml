@@ -1,0 +1,67 @@
+---
+- name: Ensure demo_app directories exist on all nodes
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ demo_app_dir }}"
+    - "{{ demo_app_dir }}/build"
+
+- name: Allow containers via docker_gwbridge to reach host Redis and Sentinel ports
+  community.general.ufw:
+    rule: allow
+    direction: in
+    interface: docker_gwbridge
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "{{ demo_redis_port }}"
+    - "{{ demo_sentinel_port }}"
+
+- name: Render demo_app config files and scripts on all nodes
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ demo_app_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: "redis-entrypoint.sh.j2", dest: "redis-entrypoint.sh", mode: "0755" }
+    - { src: "sentinel-base.conf.j2", dest: "sentinel-base.conf", mode: "0644" }
+    - { src: "sentinel-entrypoint.sh.j2", dest: "sentinel-entrypoint.sh", mode: "0755" }
+    - { src: "nginx.conf.j2", dest: "nginx.conf", mode: "0644" }
+    - { src: "docker-stack.yml.j2", dest: "docker-stack.yml", mode: "0644" }
+
+- name: Copy Flask application build context to all nodes
+  ansible.builtin.copy:
+    src: "app/"
+    dest: "{{ demo_app_dir }}/build/"
+    owner: root
+    group: root
+    mode: "0644"
+  register: demo_app_src_copy
+
+- name: Check if demo_app image already exists locally
+  community.docker.docker_image_info:
+    name:
+      - "{{ demo_app_image }}"
+  register: demo_app_image_info
+
+- name: Build demo_app image locally on node when missing or source changed
+  ansible.builtin.command:
+    cmd: "docker build -t {{ demo_app_image }} {{ demo_app_dir }}/build"
+  when: demo_app_src_copy.changed or (demo_app_image_info.images | length == 0)
+  changed_when: true
+
+- name: Deploy demo_app stack to Docker Swarm
+  community.docker.docker_stack:
+    name: "{{ demo_stack_name }}"
+    state: present
+    compose:
+      - "{{ demo_app_dir }}/docker-stack.yml"
+    prune: true
+    resolve_image: never
+  when: inventory_hostname == groups['managers'][0]

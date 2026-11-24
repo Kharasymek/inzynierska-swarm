@@ -1,0 +1,182 @@
+version: "3.8"
+
+services:
+  redis-1:
+    image: "{{ demo_redis_image }}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
+    environment:
+      MY_IP: "{{ demo_redis_worker1_ip }}"
+    volumes:
+      - "{{ demo_app_dir }}/redis-entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro"
+      - "redis_data:/data"
+    networks:
+      - hostnet
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.redis_node == 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 128M
+
+  redis-2:
+    image: "{{ demo_redis_image }}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
+    environment:
+      MY_IP: "{{ demo_redis_worker2_ip }}"
+    volumes:
+      - "{{ demo_app_dir }}/redis-entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro"
+      - "redis_data:/data"
+    networks:
+      - hostnet
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.redis_node == 2
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 128M
+
+  sentinel-1:
+    image: "{{ demo_redis_image }}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/sentinel-entrypoint.sh"]
+    environment:
+      ANNOUNCE_IP: "{{ demo_sentinel_hosts[0] }}"
+    volumes:
+      - "{{ demo_app_dir }}/sentinel-base.conf:/etc/redis/sentinel-base.conf:ro"
+      - "{{ demo_app_dir }}/sentinel-entrypoint.sh:/usr/local/bin/sentinel-entrypoint.sh:ro"
+      - "sentinel_data:/data"
+    networks:
+      - hostnet
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.sentinel_node == 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 64M
+
+  sentinel-2:
+    image: "{{ demo_redis_image }}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/sentinel-entrypoint.sh"]
+    environment:
+      ANNOUNCE_IP: "{{ demo_sentinel_hosts[1] }}"
+    volumes:
+      - "{{ demo_app_dir }}/sentinel-base.conf:/etc/redis/sentinel-base.conf:ro"
+      - "{{ demo_app_dir }}/sentinel-entrypoint.sh:/usr/local/bin/sentinel-entrypoint.sh:ro"
+      - "sentinel_data:/data"
+    networks:
+      - hostnet
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.sentinel_node == 2
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 64M
+
+  sentinel-3:
+    image: "{{ demo_redis_image }}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/sentinel-entrypoint.sh"]
+    environment:
+      ANNOUNCE_IP: "{{ demo_sentinel_hosts[2] }}"
+    volumes:
+      - "{{ demo_app_dir }}/sentinel-base.conf:/etc/redis/sentinel-base.conf:ro"
+      - "{{ demo_app_dir }}/sentinel-entrypoint.sh:/usr/local/bin/sentinel-entrypoint.sh:ro"
+      - "sentinel_data:/data"
+    networks:
+      - hostnet
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.sentinel_node == 3
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 64M
+
+  web:
+    image: "{{ demo_app_image }}"
+    environment:
+      NODE_NAME: "{% raw %}{{.Node.Hostname}}{% endraw %}"
+      TASK_SLOT: "{% raw %}{{.Task.Slot}}{% endraw %}"
+      REDIS_MASTER_NAME: "{{ demo_redis_master_name }}"
+      SENTINEL_PORT: "{{ demo_sentinel_port }}"
+      SENTINEL_HOSTS: "{{ demo_sentinel_hosts | join(',') }}"
+    networks:
+      - demo_net
+      - monitoring_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5000/live || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      replicas: {{ demo_web_replicas }}
+      labels:
+        prometheus.job: "demo-app"
+        prometheus.port: "5000"
+      placement:
+        preferences:
+          - spread: node.labels.tier
+          - spread: node.id
+      restart_policy:
+        condition: any
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      resources:
+        limits:
+          memory: 128M
+
+  nginx:
+    image: "{{ demo_nginx_image }}"
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - "{{ demo_app_dir }}/nginx.conf:/etc/nginx/conf.d/default.conf:ro"
+    networks:
+      - demo_net
+    deploy:
+      replicas: {{ demo_nginx_replicas }}
+      placement:
+        preferences:
+          - spread: node.labels.tier
+          - spread: node.id
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 64M
+
+networks:
+  hostnet:
+    external: true
+    name: host
+  demo_net:
+    driver: overlay
+  monitoring_net:
+    external: true
+    name: "{{ demo_monitoring_network }}"
+
+volumes:
+  redis_data:
+  sentinel_data:

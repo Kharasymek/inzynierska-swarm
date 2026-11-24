@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+MASTER_IP=""
+for s in {{ demo_sentinel_hosts | join(' ') }}; do
+  CANDIDATE=$(timeout 2 redis-cli -h "$s" -p {{ demo_sentinel_port }} --raw SENTINEL get-master-addr-by-name {{ demo_redis_master_name }} 2>/dev/null | head -n 1 || true)
+  if echo "$CANDIDATE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+    MASTER_IP="$CANDIDATE"
+    break
+  fi
+done
+
+ARGS="--bind 0.0.0.0 --port {{ demo_redis_port }} --protected-mode no --appendonly yes --dir /data --replica-announce-ip ${MY_IP}"
+
+if [ -n "$MASTER_IP" ]; then
+  if [ "$MASTER_IP" != "$MY_IP" ]; then
+    echo "Sentinel reports master at ${MASTER_IP} - starting ${MY_IP} as replica"
+    exec redis-server $ARGS --replicaof "$MASTER_IP" {{ demo_redis_port }}
+  else
+    echo "Sentinel reports ${MY_IP} as current master - starting as master"
+    exec redis-server $ARGS
+  fi
+else
+  if [ "$MY_IP" = "{{ demo_redis_default_master_ip }}" ]; then
+    echo "Cold bootstrap - starting default master on ${MY_IP}"
+    exec redis-server $ARGS
+  else
+    echo "Cold bootstrap - starting replica on ${MY_IP} -> {{ demo_redis_default_master_ip }}"
+    exec redis-server $ARGS --replicaof {{ demo_redis_default_master_ip }} {{ demo_redis_port }}
+  fi
+fi

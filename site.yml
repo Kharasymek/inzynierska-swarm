@@ -6,3 +6,4 @@
     - docker
     - swarm
     - monitoring_stack
+    - demo_app

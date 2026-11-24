@@ -1,0 +1,26 @@
+---
+demo_stack_name: "demo"
+demo_app_dir: "/opt/demo-app"
+demo_app_image: "demo-app:1.0"
+demo_redis_image: "redis:7.4-alpine"
+demo_nginx_image: "nginx:1.27-alpine"
+
+demo_redis_port: 6379
+demo_sentinel_port: 26379
+demo_redis_master_name: "mymaster"
+demo_redis_quorum: 2
+demo_redis_down_after_ms: 5000
+demo_redis_failover_timeout: 10000
+
+demo_redis_default_master_ip: "{{ hostvars['ideis54152-worker1'].ansible_host }}"
+demo_redis_worker1_ip: "{{ hostvars['ideis54152-worker1'].ansible_host }}"
+demo_redis_worker2_ip: "{{ hostvars['ideis54152-worker2'].ansible_host }}"
+
+demo_sentinel_hosts:
+  - "{{ hostvars['ideis54152-manager1'].ansible_host }}"
+  - "{{ hostvars['ideis54152-manager2'].ansible_host }}"
+  - "{{ hostvars['ideis54152-manager3'].ansible_host }}"
+
+demo_web_replicas: 3
+demo_nginx_replicas: 2
+demo_monitoring_network: "monitoring_monitoring_net"
