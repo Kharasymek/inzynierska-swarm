@@ -1,41 +1,41 @@
 ---
 common_packages:
-- curl
-- ca-certificates
-- gnupg
-- python3-pip
-- ufw
+  - curl
+  - ca-certificates
+  - gnupg
+  - python3-pip
+  - ufw
 
 common_ufw_public_ports:
-- "80"
-- "443"
-- "3000"
-- "8025"
-- "9090"
-- "9091"
-- "9093"
+  - "80"
+  - "443"
+  - "3000"
+  - "8025"
+  - "9090"
+  - "9091"
+  - "9093"
 
 common_ufw_swarm_ports:
-- { port: "7946", proto: "tcp", comment: "Docker Swarm gossip TCP" }
-- { port: "7946", proto: "udp", comment: "Docker Swarm gossip UDP" }
-- { port: "4789", proto: "udp", comment: "Docker Swarm overlay VXLAN" }
+  - { port: "7946", proto: "tcp", comment: "Docker Swarm gossip TCP" }
+  - { port: "7946", proto: "udp", comment: "Docker Swarm gossip UDP" }
+  - { port: "4789", proto: "udp", comment: "Docker Swarm overlay VXLAN" }
 
 common_ufw_redis_rules:
-- { port: "6379", from: "{{ cluster_subnet }}", comment: "Redis cluster subnet" }
-- { port: "6379", from: "172.16.0.0/12", comment: "Redis local Docker bridge" }
-- { port: "26379", from: "{{ cluster_subnet }}", comment: "Redis Sentinel cluster subnet"}
-- { port: "26379", from: "172.16.0.0/12", comment: "Redis Sentinel local Docker bridge"}
+  - { port: "6379", from: "{{ cluster_subnet }}", comment: "Redis cluster subnet" }
+  - { port: "6379", from: "172.16.0.0/12", comment: "Redis local Docker bridge" }
+  - { port: "26379", from: "{{ cluster_subnet }}", comment: "Redis Sentinel cluster subnet" }
+  - { port: "26379", from: "172.16.0.0/12", comment: "Redis Sentinel local Docker bridge" }
 
 keepalived_virtual_router_id: 51
 keepalived_auth_pass: "swarm54152"
 
 keepalived_nodes:
   ideis54152-manager1:
-    state: master
+    state: BACKUP
     priority: 150
   ideis54152-manager2:
-    state: backup
+    state: BACKUP
     priority: 140
   ideis54152-manager3:
-    state: backup
+    state: BACKUP
     priority: 130

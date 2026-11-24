@@ -3,12 +3,12 @@ global_defs {
     script_user root
 }
 
-vrrp_script chk_docker {
-    script "/usr/bin/pgrep dockerd"
+vrrp_script chk_docker_ingress {
+    script "/usr/bin/curl -sf --max-time 1 -o /dev/null http://127.0.0.1:80/live"
     interval 2
+    timeout 2
     fall 2
     rise 2
-    weight -20
 }
 
 vrrp_instance VI_1 {
@@ -17,14 +17,15 @@ vrrp_instance VI_1 {
     virtual_router_id {{ keepalived_virtual_router_id }}
     priority {{ keepalived_nodes[inventory_hostname].priority }}
     advert_int 1
+    nopreempt
     authentication {
         auth_type PASS
         auth_pass {{ keepalived_auth_pass }}
     }
     virtual_ipaddress {
         {{ cluster_vip_cidr }}
-}
+    }
     track_script {
-        chk_docker
+        chk_docker_ingress
     }
 }
