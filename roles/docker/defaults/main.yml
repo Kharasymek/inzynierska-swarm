@@ -1,9 +1,9 @@
 ---
 docker_packages:
- - docker.io
- - python3-docker
- - python3-jsondiff
- - python3-yaml
+  - docker.io
+  - python3-docker
+  - python3-jsondiff
+  - python3-yaml
 
 docker_admin_user: "krystian"
 docker_log_driver: "json-file"
