@@ -1,4 +1,18 @@
 ---
+- name: Check kernel IPVS module availability for Docker Swarm Routing Mesh
+  ansible.builtin.command:
+    cmd: modprobe --dry-run ip_vs
+  register: ipvs_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail fast if kernel lacks IPVS module
+  ansible.builtin.assert:
+    that:
+      - ipvs_check.rc == 0
+    fail_msg: "Brak modulu jadra ip_vs dla jadra {{ ansible_facts['kernel'] }}. Docker Swarm Routing Mesh wymaga jadra z obsluga IPVS."
+    success_msg: "Modul jadra ip_vs dostepny dla jadra {{ ansible_facts['kernel'] }}."
+
 - name: Install base system packages
   ansible.builtin.apt:
     name: "{{ common_packages }}"
@@ -60,12 +74,12 @@
     comment: "Keepalived VRRP multicast"
   when: "'managers' in group_names"
 
-- name: Enable UFW with deafult deny incoming policy
+- name: Enable UFW with default deny incoming policy
   community.general.ufw:
     state: enabled
     policy: deny
     direction: incoming
-  
+
 - name: Install Keepalived on managers
   ansible.builtin.apt:
     name: keepalived
